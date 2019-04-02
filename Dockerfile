@@ -9,4 +9,4 @@ COPY . .
 
 RUN pip install -e .[test]
 
-CMD [ "ls", "bin" ]
+CMD [ "make", "test" ]
