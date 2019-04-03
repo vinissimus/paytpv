@@ -4,4 +4,4 @@ COPY . .
 
 RUN pip install -e .[test]
 
-CMD [ "pytest","tests" ]
+CMD [ "make", "test" ]

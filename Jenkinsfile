@@ -12,7 +12,7 @@ node {
         
         stage('Test') {
             image.inside() {
-                sh "pytest tests/"
+                sh "make test"
             }
         }
         rocketSend channel: 'jenkins', message: 'Job Success'
