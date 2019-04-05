@@ -157,4 +157,3 @@ class PaytpvClient():
         signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER'
         signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AMOUNT + DS_MERCHANT_ORDER'
         return self.client.service.execute_purchase(**self.data(data, signature))
-
