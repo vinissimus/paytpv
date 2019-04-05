@@ -158,27 +158,3 @@ class PaytpvClient():
         signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AMOUNT + DS_MERCHANT_ORDER'
         return self.client.service.execute_purchase(**self.data(data, signature))
 
-    # def execute_refund(self, idpayuser, tokenpayuser):
-    #     """
-    #     <message name="execute_refundRequest">
-    #         <part name="DS_MERCHANT_MERCHANTCODE" type="xsd:string"/>
-    #         <part name="DS_MERCHANT_TERMINAL" type="xsd:string"/>
-    #         <part name="DS_IDUSER" type="xsd:string"/>
-    #         <part name="DS_TOKEN_USER" type="xsd:string"/>
-    #         <part name="DS_MERCHANT_AUTHCODE" type="xsd:string"/>
-    #         <part name="DS_MERCHANT_ORDER" type="xsd:string"/>
-    #         <part name="DS_MERCHANT_CURRENCY" type="xsd:string"/>
-    #         <part name="DS_MERCHANT_MERCHANTSIGNATURE" type="xsd:string"/>
-    #         <part name="DS_ORIGINAL_IP" type="xsd:string"/>
-    #         <part name="DS_MERCHANT_AMOUNT" type="xsd:string"/>
-    #         <part name="DS_MERCHANT_MERCHANTDESCRIPTOR" type="xsd:string"/>
-    #     """
-    #     data = {
-    #         'DS_IDUSER': idpayuser,
-    #         'DS_TOKEN_USER': tokenpayuser,
-    #         'DS_MERCHANT_AMOUNT': amount,
-    #         'DS_MERCHANT_ORDER': order,
-    #         'DS_MERCHANT_CURRENCY': 'EUR'
-    #     }
-    #     signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER + DS_MERCHANT_TERMINAL'
-    #     return self.client.service.execute_refund(**self.data(data, signature))
