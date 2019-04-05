@@ -133,10 +133,14 @@ class PaytpvClient():
         s_amount = str(int(round(amount * 100, 0)))
         if len(order) > 20:
             raise ValueError(
-                u'paytpv.executeCharge(): la longitud máxima de order es 20: %s' % (order))
+                u'paytpv.executeCharge(): la longitud máxima de order es 20: %s'
+                % (order)
+            )
         if len(description) > 40:
             raise ValueError(
-                u'paytpv.executeCharge(): la longitud máxima de description es 40: %s' % (description))
+                u'paytpv.executeCharge(): la longitud máxima de description es 40: %s'
+                % (description)
+            )
 
         data = {
             'DS_IDUSER': idpayuser,
