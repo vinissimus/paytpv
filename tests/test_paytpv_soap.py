@@ -1,5 +1,7 @@
 # encoding: utf-8
 import datetime
+import os
+import random
 from hashlib import sha1
 
 import pytest
@@ -7,9 +9,6 @@ from requests.exceptions import ConnectionError
 
 from paytpv.client import PaytpvClient
 from paytpv.settings import settings
-
-import os
-import random
 
 
 T1 = '4539232076648253'
@@ -69,7 +68,7 @@ def test_add_user():
     DS_IDUSER = res.DS_IDUSER
     DS_TOKEN_USER = res.DS_TOKEN_USER
     os.environ['DS_IDUSER'] = DS_IDUSER
-    os.environ['DS_TOKEN_USER'] = DS_TOKEN_USER    
+    os.environ['DS_TOKEN_USER'] = DS_TOKEN_USER
 
     # already added user
     res = paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
@@ -77,15 +76,15 @@ def test_add_user():
     assert DS_IDUSER != res.DS_IDUSER
     assert DS_TOKEN_USER != res.DS_TOKEN_USER
     os.environ['DS_IDUSER_2'] = res.DS_IDUSER
-    os.environ['DS_TOKEN_USER_2'] = res.DS_TOKEN_USER    
+    os.environ['DS_TOKEN_USER_2'] = res.DS_TOKEN_USER
 
-    
+
 def test_info_user():
     id_user = '0'
     token = '0'
     ip = '1'
     paytpv = PaytpvClient(settings, ip)
-    
+
     # non-existent user
     res = paytpv.info_user(idpayuser=id_user, tokenpayuser=token)
     assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
@@ -107,7 +106,7 @@ def test_info_user():
 
 def test_execute_charge():
     paytpv = PaytpvClient(settings, ip='192.168.1.1')
-    
+
     # charge non-existent user
     res = paytpv.execute_charge(idpayuser='0', tokenpayuser='0', amount=33, order='3')
     assert res.DS_ERROR_ID == 1001
@@ -130,8 +129,8 @@ def test_remove_user():
     token = '0'
     ip = '1'
     paytpv = PaytpvClient(settings, ip)
-    
-    # remove non-existent user 
+
+    # remove non-existent user
     res = paytpv.remove_user(idpayuser=id_user, tokenpayuser=token)
     assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
 

@@ -127,8 +127,9 @@ class PaytpvClient():
         """
         if amount <= 0:
             raise ValueError(
-            u'paytpv.executeCharge(): el importe debe ser positivo: %s' % (
-            amount))
+                u'paytpv.executeCharge(): el importe debe ser positivo: %s'
+                % (amount)
+            )
         s_amount = str(int(round(amount * 100, 0)))
         if len(order) > 20:
             raise ValueError(
@@ -145,13 +146,14 @@ class PaytpvClient():
             'DS_MERCHANT_CURRENCY': 'EUR',
             'DS_MERCHANT_PRODUCTDESCRIPTION': description,
             'DS_MERCHANT_OWNER': 'Vinissimus',
-            'DS_MERCHANT_SCORING': scoring, 
+            'DS_MERCHANT_SCORING': scoring,
             'DS_MERCHANT_DATA': merchant_data,
             'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
         }
-        signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER + DS_MERCHANT_TERMINAL + DS_MERCHANT_AMOUNT + DS_MERCHANT_ORDER'
+        signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER'
+        signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AMOUNT + DS_MERCHANT_ORDER'
         return self.client.service.execute_purchase(**self.data(data, signature))
-    
+
     # def execute_refund(self, idpayuser, tokenpayuser):
     #     """
     #     <message name="execute_refundRequest">
