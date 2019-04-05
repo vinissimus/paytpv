@@ -8,6 +8,9 @@ from requests.exceptions import ConnectionError
 from paytpv.client import PaytpvClient
 from paytpv.settings import settings
 
+import os
+import random
+
 
 T1 = '4539232076648253'
 T2 = '5445288852200883'
@@ -51,26 +54,6 @@ def test_connection():
         paytpv.client
 
 
-def test_info_user():
-    id_user = '0'
-    token = '0'
-    ip = '1'
-    paytpv = PaytpvClient(settings, ip)
-
-    res = paytpv.info_user(idpayuser=id_user, tokenpayuser=token)
-    assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
-
-
-def test_remove_user():
-    id_user = '0'
-    token = '0'
-    ip = '1'
-    paytpv = PaytpvClient(settings, ip)
-
-    res = paytpv.remove_user(idpayuser=id_user, tokenpayuser=token)
-    assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
-
-
 def test_add_user():
     paytpv = PaytpvClient(settings, ip='1')
 
@@ -85,6 +68,31 @@ def test_add_user():
     assert res.DS_ERROR_ID == '0'
     DS_IDUSER = res.DS_IDUSER
     DS_TOKEN_USER = res.DS_TOKEN_USER
+    os.environ['DS_IDUSER'] = DS_IDUSER
+    os.environ['DS_TOKEN_USER'] = DS_TOKEN_USER    
+
+    # already added user
+    res = paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
+    assert res.DS_ERROR_ID == '0'
+    assert DS_IDUSER != res.DS_IDUSER
+    assert DS_TOKEN_USER != res.DS_TOKEN_USER
+    os.environ['DS_IDUSER_2'] = res.DS_IDUSER
+    os.environ['DS_TOKEN_USER_2'] = res.DS_TOKEN_USER    
+
+    
+def test_info_user():
+    id_user = '0'
+    token = '0'
+    ip = '1'
+    paytpv = PaytpvClient(settings, ip)
+    
+    # non-existent user
+    res = paytpv.info_user(idpayuser=id_user, tokenpayuser=token)
+    assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
+
+    # Existent user
+    DS_IDUSER = os.environ['DS_IDUSER']
+    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
 
     res = paytpv.info_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
     assert res.DS_ERROR_ID == 0
@@ -96,15 +104,43 @@ def test_add_user():
     assert res.DS_CARD_HASH == 'd752d8a349d88ba10f5d09f2ec09baba7b527d82d3fdaef175048a15e19e34bc'
     assert res.DS_CARD_CATEGORY == 'BUSINESS'
 
-    # already added user
-    res = paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
-    assert res.DS_ERROR_ID == '0'
-    assert DS_IDUSER != res.DS_IDUSER
-    assert DS_TOKEN_USER != res.DS_TOKEN_USER
-    DS_IDUSER_2 = res.DS_IDUSER
-    DS_TOKEN_USER_2 = res.DS_TOKEN_USER
+
+def test_execute_charge():
+    paytpv = PaytpvClient(settings, ip='192.168.1.1')
+    
+    # charge non-existent user
+    res = paytpv.execute_charge(idpayuser='0', tokenpayuser='0', amount=33, order='3')
+    assert res.DS_ERROR_ID == 1001
+
+    # charge
+    DS_IDUSER = os.environ['DS_IDUSER']
+    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
+    DS_MERCHANT_ORDER = str(random.random())
+
+    res = paytpv.execute_charge(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33, order=DS_MERCHANT_ORDER)
+    assert res.DS_ERROR_ID == 0
+    assert res.DS_MERCHANT_AMOUNT == 3300
+    assert res.DS_MERCHANT_ORDER == DS_MERCHANT_ORDER
+    assert res.DS_MERCHANT_CURRENCY == "EUR"
+    assert res.DS_MERCHANT_CARDCOUNTRY == 724
+
+
+def test_remove_user():
+    id_user = '0'
+    token = '0'
+    ip = '1'
+    paytpv = PaytpvClient(settings, ip)
+    
+    # remove non-existent user 
+    res = paytpv.remove_user(idpayuser=id_user, tokenpayuser=token)
+    assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
 
     # remove added users
+    DS_IDUSER = os.environ['DS_IDUSER']
+    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
+    DS_IDUSER_2 = os.environ['DS_IDUSER_2']
+    DS_TOKEN_USER_2 = os.environ['DS_TOKEN_USER_2']
+
     res = paytpv.remove_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
     res.DS_RESPONSE == 1
     res.DS_ERROR_ID == 0
