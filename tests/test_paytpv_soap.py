@@ -115,6 +115,7 @@ def test_execute_charge():
     DS_IDUSER = os.environ['DS_IDUSER']
     DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
     DS_MERCHANT_ORDER = str(random.random())
+    os.environ['DS_MERCHANT_ORDER'] = DS_MERCHANT_ORDER
 
     res = paytpv.execute_charge(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33, order=DS_MERCHANT_ORDER)
     assert res.DS_ERROR_ID == 0
@@ -122,6 +123,25 @@ def test_execute_charge():
     assert res.DS_MERCHANT_ORDER == DS_MERCHANT_ORDER
     assert res.DS_MERCHANT_CURRENCY == "EUR"
     assert res.DS_MERCHANT_CARDCOUNTRY == 724
+    os.environ['DS_MERCHANT_AUTHCODE'] = res.DS_MERCHANT_AUTHCODE
+
+
+def test_execute_refund():
+    paytpv = PaytpvClient(settings, ip='192.168.1.1')
+
+    # refund
+    DS_IDUSER = os.environ['DS_IDUSER']
+    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
+    DS_MERCHANT_ORDER = os.environ['DS_MERCHANT_ORDER']
+    DS_MERCHANT_AUTHCODE = os.environ['DS_MERCHANT_AUTHCODE']
+
+    res = paytpv.execute_refund(
+        idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33,
+        order=DS_MERCHANT_ORDER, authcode=DS_MERCHANT_AUTHCODE
+    )
+    assert res.DS_ERROR_ID == 0
+    assert res.DS_MERCHANT_ORDER == DS_MERCHANT_ORDER
+    assert res.DS_MERCHANT_CURRENCY == "EUR"
 
 
 def test_remove_user():

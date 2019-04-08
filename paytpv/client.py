@@ -121,7 +121,7 @@ class PaytpvClient():
         * Realiza un cobro mediante llamada soap.
         * @param int $idpayuser Id de usuario en PAYTPV
         * @param string $tokenpayuser Token de usuario en PAYTPV
-        * @param decimal $amount Importe del pago 1€ = 100
+        * @param int $amount Importe del pago 1€ = 100
         * @param string $order Identificador único del pago
         * @return object Objeto de respuesta de la operación
         """
@@ -157,3 +157,38 @@ class PaytpvClient():
         signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER'
         signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AMOUNT + DS_MERCHANT_ORDER'
         return self.client.service.execute_purchase(**self.data(data, signature))
+
+    def execute_refund(self, idpayuser, tokenpayuser, amount, order, authcode, merchant_description=""):
+        """
+        * Realiza devolución mediante llamada soap
+        * @param int $idpayuser Id de usuario en PAYTPV
+        * @param string $tokenpayuser Token de usuario en PAYTPV
+        * @param int $amount Importe del pago 1€ = 100
+        * @param string $order Identificador único del pago (debe ser el mismo del cobro)
+        * @param string authcode Identificador devuelto en el momento del cobro
+        * @return object Objeto de respuesta de la operación
+        """
+        if amount <= 0:
+            raise ValueError(
+                u'paytpv.executeCharge(): el importe debe ser positivo: %s'
+                % (amount)
+            )
+        s_amount = str(int(round(amount * 100, 0)))
+        if len(order) > 20:
+            raise ValueError(
+                u'paytpv.executeCharge(): la longitud máxima de order es 20: %s'
+                % (order)
+            )
+
+        data = {
+            'DS_IDUSER': idpayuser,
+            'DS_TOKEN_USER': tokenpayuser,
+            'DS_MERCHANT_AMOUNT': s_amount,
+            'DS_MERCHANT_ORDER': order,
+            'DS_MERCHANT_CURRENCY': 'EUR',
+            'DS_MERCHANT_AUTHCODE': authcode,
+            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
+        }
+        signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER '
+        signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AUTHCODE + DS_MERCHANT_ORDER'
+        return self.client.service.execute_refund(**self.data(data, signature))
