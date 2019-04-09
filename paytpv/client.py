@@ -14,7 +14,7 @@ zeep.exceptions.ValidationError: Missing element DS_MERCHANT_CARDHOLDERNAME (add
 
 
 """
-from hashlib import sha1
+from hashlib import md5, sha1
 
 from zeep import Client
 
@@ -192,3 +192,67 @@ class PaytpvClient():
         signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER '
         signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AUTHCODE + DS_MERCHANT_ORDER'
         return self.client.service.execute_refund(**self.data(data, signature))
+
+    def get_secure_iframe(self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko):
+        """
+        * Retorna el codi html del iframe per fer un cobrament securitzat.
+        * Operació 109, execute_purchase_token: cobrament a un usuari ja existent.
+        """
+        if amount <= 0:
+            raise ValueError(
+                u'paytpv.getSecureIframe(): el importe debe ser positivo: %s' % (amount)
+            )
+        s_amount = str(int(round(amount * 100, 0)))
+        if len(order) > 20:
+            raise ValueError(
+                u'paytpv.getSecureIframe(): la longitud máxima de order es 20: %s' % (order)
+            )
+
+        def iframe_signature(data, signature):
+            """
+            Cálculo firma:
+            md5(MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL
+            + OPERATION + MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY + md5(PASSWORD))
+            """
+            ordered_ds = signature.split('+')
+            ordered_ds = map(str.strip, ordered_ds)
+            suma = ''.join(map(data.get, ordered_ds))
+            suma = suma + md5(self.MERCHANTPASSWORD.encode()).hexdigest()
+            return md5(suma.encode()).hexdigest()
+
+        data = {
+            'IDUSER': idpayuser,
+            'TOKEN_USER': tokenpayuser,
+            'OPERATION': "109",
+            'MERCHANT_ORDER': order,
+            'MERCHANT_AMOUNT': s_amount,
+            'MERCHANT_CURRENCY': 'EUR',
+            'MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'ORIGINAL_IP': self.ip
+        }
+        signature = 'MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL + OPERATION '
+        signature += '+ MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY'
+        signature = iframe_signature(data, signature)
+        params = [
+            "MERCHANT_MERCHANTCODE=" + self.MERCHANTCODE,
+            "MERCHANT_TERMINAL=" + self.MERCHANTTERMINAL,
+            "OPERATION=109",
+            "LANGUAGE=" + language,
+            "MERCHANT_MERCHANTSIGNATURE=" + signature,
+            "MERCHANT_ORDER=" + order,
+            "MERCHANT_AMOUNT=" + s_amount,
+            "MERCHANT_CURRENCY=EUR",
+            "IDUSER=" + idpayuser,
+            "TOKEN_USER=" + tokenpayuser,
+            "3DSECURE=1",
+            "URLOK=" + urlok,
+            "URLKO=" + urlko
+        ]
+        IFRAMEURL = "https://secure.paytpv.com/gateway/bnkgateway.php?%s" % ('&'.join(params))
+        return """<iframe id="secure_iframe"
+                title="Secure payment"
+                allowtransparency="true"
+                frameborder="0"
+                style="background: #FFFFFF; width:100%%; height:600px"
+                src="%s"></iframe>""" % (IFRAMEURL)

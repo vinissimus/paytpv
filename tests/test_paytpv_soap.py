@@ -2,6 +2,7 @@
 import datetime
 import os
 import random
+import re
 from hashlib import sha1
 
 import pytest
@@ -105,7 +106,7 @@ def test_info_user():
 
 
 def test_execute_charge():
-    paytpv = PaytpvClient(settings, ip='192.168.1.1')
+    paytpv = PaytpvClient(settings, ip='62.83.129.18')
 
     # charge non-existent user
     res = paytpv.execute_charge(idpayuser='0', tokenpayuser='0', amount=33, order='3')
@@ -127,7 +128,7 @@ def test_execute_charge():
 
 
 def test_execute_refund():
-    paytpv = PaytpvClient(settings, ip='192.168.1.1')
+    paytpv = PaytpvClient(settings, ip='62.83.129.18')
 
     # refund
     DS_IDUSER = os.environ['DS_IDUSER']
@@ -142,6 +143,21 @@ def test_execute_refund():
     assert res.DS_ERROR_ID == 0
     assert res.DS_MERCHANT_ORDER == DS_MERCHANT_ORDER
     assert res.DS_MERCHANT_CURRENCY == "EUR"
+
+
+def test_get_secure_iframe():
+    paytpv = PaytpvClient(settings, ip='62.83.129.18')
+    DS_IDUSER = os.environ['DS_IDUSER']
+    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
+    DS_MERCHANT_ORDER = os.environ['DS_MERCHANT_ORDER']
+    urlok = "www.vinissimus.com/ok.html"
+    urlko = "www.vinissimus.com/ko.html"
+    res = paytpv.get_secure_iframe(
+        idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33,
+        order=DS_MERCHANT_ORDER, language='ES', urlok=urlok, urlko=urlko
+    )
+    assert isinstance(res, str)
+    assert re.match(r"(?:<iframe[^>]*)(?:(?:\/>)|(?:>.*?<\/iframe>))", res) is not None
 
 
 def test_remove_user():
