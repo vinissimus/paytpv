@@ -45,6 +45,18 @@ class PaytpvClient():
         suma = suma + self.MERCHANTPASSWORD
         return sha1(suma.encode()).hexdigest()
 
+    def iframe_signature(self, data, signature):
+        """
+        Cálculo firma:
+        md5(MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL
+        + OPERATION + MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY + md5(PASSWORD))
+        """
+        ordered_ds = signature.split('+')
+        ordered_ds = map(str.strip, ordered_ds)
+        suma = ''.join(map(data.get, ordered_ds))
+        suma = suma + md5(self.MERCHANTPASSWORD.encode()).hexdigest()
+        return md5(suma.encode()).hexdigest()
+
     def data(self, data, signature):
         """Base SOAP request data with signature"""
         base_data = {
@@ -208,18 +220,6 @@ class PaytpvClient():
                 u'paytpv.getSecureIframe(): la longitud máxima de order es 20: %s' % (order)
             )
 
-        def iframe_signature(data, signature):
-            """
-            Cálculo firma:
-            md5(MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL
-            + OPERATION + MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY + md5(PASSWORD))
-            """
-            ordered_ds = signature.split('+')
-            ordered_ds = map(str.strip, ordered_ds)
-            suma = ''.join(map(data.get, ordered_ds))
-            suma = suma + md5(self.MERCHANTPASSWORD.encode()).hexdigest()
-            return md5(suma.encode()).hexdigest()
-
         data = {
             'IDUSER': idpayuser,
             'TOKEN_USER': tokenpayuser,
@@ -233,7 +233,7 @@ class PaytpvClient():
         }
         signature = 'MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL + OPERATION '
         signature += '+ MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY'
-        signature = iframe_signature(data, signature)
+        signature = self.iframe_signature(data, signature)
         params = [
             "MERCHANT_MERCHANTCODE=" + self.MERCHANTCODE,
             "MERCHANT_TERMINAL=" + self.MERCHANTTERMINAL,

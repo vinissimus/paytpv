@@ -43,9 +43,8 @@ def test_signature():
     assert sign == sha1(code.encode()).hexdigest()
 
 
-def test_connection():
+def test_connection(paytpv):
     # ok
-    paytpv = PaytpvClient(settings, ip=None)
     assert paytpv.client
 
     # connection error
@@ -54,8 +53,7 @@ def test_connection():
         paytpv.client
 
 
-def test_add_user():
-    paytpv = PaytpvClient(settings, ip='1')
+def test_add_user(paytpv):
 
     # error expdate
     res = paytpv.add_user(pan='1', expdate='1', cvv='1', name='1')
@@ -80,11 +78,9 @@ def test_add_user():
     os.environ['DS_TOKEN_USER_2'] = res.DS_TOKEN_USER
 
 
-def test_info_user():
+def test_info_user(paytpv):
     id_user = '0'
     token = '0'
-    ip = '1'
-    paytpv = PaytpvClient(settings, ip)
 
     # non-existent user
     res = paytpv.info_user(idpayuser=id_user, tokenpayuser=token)
@@ -105,8 +101,7 @@ def test_info_user():
     assert res.DS_CARD_CATEGORY == 'BUSINESS'
 
 
-def test_execute_charge():
-    paytpv = PaytpvClient(settings, ip='62.83.129.18')
+def test_execute_charge(paytpv):
 
     # charge non-existent user
     res = paytpv.execute_charge(idpayuser='0', tokenpayuser='0', amount=33, order='3')
@@ -127,8 +122,7 @@ def test_execute_charge():
     os.environ['DS_MERCHANT_AUTHCODE'] = res.DS_MERCHANT_AUTHCODE
 
 
-def test_execute_refund():
-    paytpv = PaytpvClient(settings, ip='62.83.129.18')
+def test_execute_refund(paytpv):
 
     # refund
     DS_IDUSER = os.environ['DS_IDUSER']
@@ -145,8 +139,7 @@ def test_execute_refund():
     assert res.DS_MERCHANT_CURRENCY == "EUR"
 
 
-def test_get_secure_iframe():
-    paytpv = PaytpvClient(settings, ip='62.83.129.18')
+def test_get_secure_iframe(paytpv):
     DS_IDUSER = os.environ['DS_IDUSER']
     DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
     DS_MERCHANT_ORDER = os.environ['DS_MERCHANT_ORDER']
@@ -161,11 +154,9 @@ def test_get_secure_iframe():
     assert re.match(r"(?:<iframe[^>]*)(?:(?:\/>)|(?:>.*?<\/iframe>))", res) is not None
 
 
-def test_remove_user():
+def test_remove_user(paytpv):
     id_user = '0'
     token = '0'
-    ip = '1'
-    paytpv = PaytpvClient(settings, ip)
 
     # remove non-existent user
     res = paytpv.remove_user(idpayuser=id_user, tokenpayuser=token)
