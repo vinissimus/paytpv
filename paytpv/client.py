@@ -39,21 +39,14 @@ class PaytpvClient():
     def signature(self, data, suma_ds):
         """
         """
-        ordered_ds = suma_ds.split('+')
-        ordered_ds = map(str.strip, ordered_ds)
-        suma = ''.join(map(data.get, ordered_ds))
+        suma = ''.join(map(data.get, suma_ds))
         suma = suma + self.MERCHANTPASSWORD
         return sha1(suma.encode()).hexdigest()
 
     def iframe_signature(self, data, signature):
         """
-        Cálculo firma:
-        md5(MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL
-        + OPERATION + MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY + md5(PASSWORD))
         """
-        ordered_ds = signature.split('+')
-        ordered_ds = map(str.strip, ordered_ds)
-        suma = ''.join(map(data.get, ordered_ds))
+        suma = ''.join(map(data.get, signature))
         suma = suma + md5(self.MERCHANTPASSWORD.encode()).hexdigest()
         return md5(suma.encode()).hexdigest()
 
@@ -92,7 +85,7 @@ class PaytpvClient():
             'DS_MERCHANT_CVV2': cvv,  # Código CVC2 {3,4}
             'DS_MERCHANT_CARDHOLDERNAME': name
             }
-        signature = 'DS_MERCHANT_MERCHANTCODE + DS_MERCHANT_PAN + DS_MERCHANT_CVV2 + DS_MERCHANT_TERMINAL'
+        signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_PAN', 'DS_MERCHANT_CVV2', 'DS_MERCHANT_TERMINAL']
         return self.client.service.add_user(**self.data(data, signature))
 
     def info_user(self, idpayuser, tokenpayuser):
@@ -106,7 +99,7 @@ class PaytpvClient():
             'DS_IDUSER': idpayuser,
             'DS_TOKEN_USER': tokenpayuser
             }
-        signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER + DS_MERCHANT_TERMINAL'
+        signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
         return self.client.service.info_user(**self.data(data, signature))
 
     def remove_user(self, idpayuser, tokenpayuser):
@@ -123,7 +116,7 @@ class PaytpvClient():
             'DS_IDUSER': idpayuser,
             'DS_TOKEN_USER': tokenpayuser
             }
-        signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER + DS_MERCHANT_TERMINAL'
+        signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
         return self.client.service.remove_user(**self.data(data, signature))
 
     def execute_charge(self, idpayuser, tokenpayuser, amount, order,
@@ -166,8 +159,10 @@ class PaytpvClient():
             'DS_MERCHANT_DATA': merchant_data,
             'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
         }
-        signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER'
-        signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AMOUNT + DS_MERCHANT_ORDER'
+        signature = [
+            'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
+            'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AMOUNT', 'DS_MERCHANT_ORDER'
+        ]
         return self.client.service.execute_purchase(**self.data(data, signature))
 
     def execute_refund(self, idpayuser, tokenpayuser, amount, order, authcode, merchant_description=""):
@@ -201,14 +196,20 @@ class PaytpvClient():
             'DS_MERCHANT_AUTHCODE': authcode,
             'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
         }
-        signature = 'DS_MERCHANT_MERCHANTCODE + DS_IDUSER + DS_TOKEN_USER '
-        signature += '+ DS_MERCHANT_TERMINAL + DS_MERCHANT_AUTHCODE + DS_MERCHANT_ORDER'
+        signature = [
+            'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
+            'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AUTHCODE', 'DS_MERCHANT_ORDER'
+        ]
         return self.client.service.execute_refund(**self.data(data, signature))
 
     def get_secure_iframe(self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko):
         """
         * Retorna el codi html del iframe per fer un cobrament securitzat.
         * Operació 109, execute_purchase_token: cobrament a un usuari ja existent.
+
+        Cálculo firma:
+        md5(MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL
+        + OPERATION + MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY + md5(PASSWORD))
         """
         if amount <= 0:
             raise ValueError(
@@ -231,8 +232,10 @@ class PaytpvClient():
             'MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
             'ORIGINAL_IP': self.ip
         }
-        signature = 'MERCHANT_MERCHANTCODE + IDUSER + TOKEN_USER + MERCHANT_TERMINAL + OPERATION '
-        signature += '+ MERCHANT_ORDER + MERCHANT_AMOUNT + MERCHANT_CURRENCY'
+        signature = [
+            'MERCHANT_MERCHANTCODE', 'IDUSER', 'TOKEN_USER', 'MERCHANT_TERMINAL',
+            'OPERATION', 'MERCHANT_ORDER', 'MERCHANT_AMOUNT', 'MERCHANT_CURRENCY'
+        ]
         signature = self.iframe_signature(data, signature)
         params = [
             "MERCHANT_MERCHANTCODE=" + self.MERCHANTCODE,

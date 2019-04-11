@@ -34,7 +34,7 @@ def test_signature():
         'DS_MERCHANT_CVV2': '3',
         'DS_ORIGINAL_IP': 'no'
         }
-    signature = 'DS_MERCHANT_MERCHANTCODE + DS_MERCHANT_PAN + DS_MERCHANT_CVV2 + DS_MERCHANT_TERMINAL'
+    signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_PAN', 'DS_MERCHANT_CVV2', 'DS_MERCHANT_TERMINAL']
 
     paytpv = PaytpvClient(settings, ip=None)
     sign = paytpv.signature(data, signature)
