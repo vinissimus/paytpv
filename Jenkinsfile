@@ -11,7 +11,7 @@ node {
         }
         
         stage('Test') {
-            sh "docker run --rm"
+            sh "docker run --rm ${image}"
         }
         rocketSend channel: 'jenkins', message: 'Job Success'
     } catch(e) {
