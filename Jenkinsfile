@@ -11,7 +11,7 @@ node {
         }
         
         stage('Test') {
-            image = "paytpv:${env.BRANCH_NAME}.${env.BUILD_NUMBER}"
+            image = "paytpv:${env.BUILD_NUMBER}"
             sh "docker run --rm ${image}"
         }
         rocketSend channel: 'jenkins', message: 'Job Success'
