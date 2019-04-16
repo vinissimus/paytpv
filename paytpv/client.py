@@ -18,7 +18,7 @@ from hashlib import md5, sha1
 
 from zeep import Client
 
-from exc import SoapError
+from paytpv.exc import SoapError
 
 
 class PaytpvClient():
