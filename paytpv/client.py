@@ -18,6 +18,8 @@ from hashlib import md5, sha1
 
 from zeep import Client
 
+from exc import SoapError
+
 
 class PaytpvClient():
 
@@ -26,11 +28,11 @@ class PaytpvClient():
         :param ip: Dirección IP del cliente
         """
         self.ip = ip
-        self.MERCHANTCODE = settings.MERCHANTCODE
-        self.MERCHANTPASSWORD = settings.MERCHANTPASSWORD
-        self.MERCHANTTERMINAL = settings.MERCHANTTERMINAL
-        self.PAYTPVURL = settings.PAYTPVURL
-        self.PAYTPVWSDL = settings.PAYTPVWSDL
+        self.MERCHANTCODE = settings['MERCHANTCODE']
+        self.MERCHANTPASSWORD = settings['MERCHANTPASSWORD']
+        self.MERCHANTTERMINAL = settings['MERCHANTTERMINAL']
+        self.PAYTPVURL = settings['PAYTPVURL']
+        self.PAYTPVWSDL = settings['PAYTPVWSDL']
 
     @property
     def client(self):
@@ -49,17 +51,6 @@ class PaytpvClient():
         suma = ''.join(map(data.get, signature))
         suma = suma + md5(self.MERCHANTPASSWORD.encode()).hexdigest()
         return md5(suma.encode()).hexdigest()
-
-    def data(self, data, signature):
-        """Base SOAP request data with signature"""
-        base_data = {
-            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,  # Código de cliente
-            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,  # Número de terminal
-            'DS_ORIGINAL_IP': self.ip,  # Dirección IP del cliente
-            }
-        data.update(base_data)
-        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
-        return data
 
     def add_user(self, pan, expdate, cvv, name):
         """
@@ -83,10 +74,17 @@ class PaytpvClient():
             'DS_MERCHANT_PAN': pan,  # Número de tarjeta, sin espacios ni guiones {16,19}
             'DS_MERCHANT_EXPIRYDATE': expdate,  # Fecha de caducidad mmyy
             'DS_MERCHANT_CVV2': cvv,  # Código CVC2 {3,4}
-            'DS_MERCHANT_CARDHOLDERNAME': name
+            'DS_MERCHANT_CARDHOLDERNAME': name,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_PAN', 'DS_MERCHANT_CVV2', 'DS_MERCHANT_TERMINAL']
-        return self.client.service.add_user(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.add_user(**data)
+        if res.DS_ERROR_ID != '0':
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def info_user(self, idpayuser, tokenpayuser):
         """
@@ -97,10 +95,17 @@ class PaytpvClient():
         """
         data = {
             'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser
+            'DS_TOKEN_USER': tokenpayuser,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
-        return self.client.service.info_user(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.info_user(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def remove_user(self, idpayuser, tokenpayuser):
         """
@@ -114,10 +119,17 @@ class PaytpvClient():
         """
         data = {
             'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser
+            'DS_TOKEN_USER': tokenpayuser,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
-        return self.client.service.remove_user(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.remove_user(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def execute_charge(self, idpayuser, tokenpayuser, amount, order,
                        description="", scoring=0, merchant_data="",
@@ -157,13 +169,20 @@ class PaytpvClient():
             'DS_MERCHANT_OWNER': 'Vinissimus',
             'DS_MERCHANT_SCORING': scoring,
             'DS_MERCHANT_DATA': merchant_data,
-            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
-        }
+            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
+            }
         signature = [
             'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
             'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AMOUNT', 'DS_MERCHANT_ORDER'
         ]
-        return self.client.service.execute_purchase(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.execute_purchase(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def execute_refund(self, idpayuser, tokenpayuser, amount, order, authcode, merchant_description=""):
         """
@@ -194,13 +213,20 @@ class PaytpvClient():
             'DS_MERCHANT_ORDER': order,
             'DS_MERCHANT_CURRENCY': 'EUR',
             'DS_MERCHANT_AUTHCODE': authcode,
-            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
-        }
+            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
+            }
         signature = [
             'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
             'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AUTHCODE', 'DS_MERCHANT_ORDER'
         ]
-        return self.client.service.execute_refund(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.execute_refund(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def get_secure_iframe(self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko):
         """

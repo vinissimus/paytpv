@@ -9,7 +9,7 @@ import pytest
 from requests.exceptions import ConnectionError
 
 from paytpv.client import PaytpvClient
-from paytpv.settings import settings
+from paytpv.exc import SoapError
 
 
 T1 = '4539232076648253'
@@ -22,6 +22,14 @@ YEAR = datetime.datetime.now().year + 1
 CADUCA = '05' + str(YEAR)[2:]  # 05 y año: año actual + 1
 CVV = '123'
 D3Secure = '1234'
+
+settings = {
+    'MERCHANTCODE': os.environ['MERCHANTCODE'],
+    'MERCHANTPASSWORD': os.environ['MERCHANTPASSWORD'],
+    'MERCHANTTERMINAL': os.environ['MERCHANTTERMINAL'],
+    'PAYTPVURL': "https://secure.paytpv.com/gateway/xml-bankstore",
+    'PAYTPVWSDL': "https://secure.paytpv.com/gateway/xml-bankstore?wsdl"
+}
 
 
 def test_signature():
@@ -38,7 +46,7 @@ def test_signature():
 
     paytpv = PaytpvClient(settings, ip=None)
     sign = paytpv.signature(data, signature)
-    code = '1234' + settings.MERCHANTPASSWORD
+    code = '1234' + settings['MERCHANTPASSWORD']
 
     assert sign == sha1(code.encode()).hexdigest()
 
@@ -56,39 +64,43 @@ def test_connection(paytpv):
 def test_add_user(paytpv):
 
     # error expdate
-    res = paytpv.add_user(pan='1', expdate='1', cvv='1', name='1')
-    assert res.DS_ERROR_ID == '109'  # Error en FechaCaducidad
-    assert res.DS_IDUSER == '0'
-    assert res.DS_TOKEN_USER == '0'
+    with pytest.raises(SoapError):
+        res = paytpv.add_user(pan='1', expdate='1', cvv='1', name='1')
 
     # new user
     res = paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
     assert res.DS_ERROR_ID == '0'
     DS_IDUSER = res.DS_IDUSER
     DS_TOKEN_USER = res.DS_TOKEN_USER
-    os.environ['DS_IDUSER'] = DS_IDUSER
-    os.environ['DS_TOKEN_USER'] = DS_TOKEN_USER
 
     # already added user
     res = paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
     assert res.DS_ERROR_ID == '0'
     assert DS_IDUSER != res.DS_IDUSER
     assert DS_TOKEN_USER != res.DS_TOKEN_USER
-    os.environ['DS_IDUSER_2'] = res.DS_IDUSER
-    os.environ['DS_TOKEN_USER_2'] = res.DS_TOKEN_USER
+    DS_IDUSER_2 = res.DS_IDUSER
+    DS_TOKEN_USER_2 = res.DS_TOKEN_USER
+
+    # remove added users
+    res = paytpv.remove_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
+    res.DS_RESPONSE == 1
+    res.DS_ERROR_ID == 0
+    res = paytpv.remove_user(idpayuser=DS_IDUSER_2, tokenpayuser=DS_TOKEN_USER_2)
+    res.DS_RESPONSE == 1
+    res.DS_ERROR_ID == 0
 
 
-def test_info_user(paytpv):
+def test_info_user(paytpv, user):
     id_user = '0'
     token = '0'
 
     # non-existent user
-    res = paytpv.info_user(idpayuser=id_user, tokenpayuser=token)
-    assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
+    with pytest.raises(SoapError):
+        res = paytpv.info_user(idpayuser=id_user, tokenpayuser=token)
 
     # Existent user
-    DS_IDUSER = os.environ['DS_IDUSER']
-    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
+    DS_IDUSER = user.DS_IDUSER
+    DS_TOKEN_USER = user.DS_TOKEN_USER
 
     res = paytpv.info_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
     assert res.DS_ERROR_ID == 0
@@ -101,17 +113,16 @@ def test_info_user(paytpv):
     assert res.DS_CARD_CATEGORY == 'BUSINESS'
 
 
-def test_execute_charge(paytpv):
+def test_execute_charge(paytpv, user):
 
     # charge non-existent user
-    res = paytpv.execute_charge(idpayuser='0', tokenpayuser='0', amount=33, order='3')
-    assert res.DS_ERROR_ID == 1001
+    with pytest.raises(SoapError):
+        res = paytpv.execute_charge(idpayuser='0', tokenpayuser='0', amount=33, order='3')
 
     # charge
-    DS_IDUSER = os.environ['DS_IDUSER']
-    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
+    DS_IDUSER = user.DS_IDUSER
+    DS_TOKEN_USER = user.DS_TOKEN_USER
     DS_MERCHANT_ORDER = str(random.random())
-    os.environ['DS_MERCHANT_ORDER'] = DS_MERCHANT_ORDER
 
     res = paytpv.execute_charge(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33, order=DS_MERCHANT_ORDER)
     assert res.DS_ERROR_ID == 0
@@ -119,16 +130,15 @@ def test_execute_charge(paytpv):
     assert res.DS_MERCHANT_ORDER == DS_MERCHANT_ORDER
     assert res.DS_MERCHANT_CURRENCY == "EUR"
     assert res.DS_MERCHANT_CARDCOUNTRY == 724
-    os.environ['DS_MERCHANT_AUTHCODE'] = res.DS_MERCHANT_AUTHCODE
 
 
-def test_execute_refund(paytpv):
+def test_execute_refund(paytpv, user, order):
 
     # refund
-    DS_IDUSER = os.environ['DS_IDUSER']
-    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
-    DS_MERCHANT_ORDER = os.environ['DS_MERCHANT_ORDER']
-    DS_MERCHANT_AUTHCODE = os.environ['DS_MERCHANT_AUTHCODE']
+    DS_IDUSER = user.DS_IDUSER
+    DS_TOKEN_USER = user.DS_TOKEN_USER
+    DS_MERCHANT_ORDER = order.DS_MERCHANT_ORDER
+    DS_MERCHANT_AUTHCODE = order.DS_MERCHANT_AUTHCODE
 
     res = paytpv.execute_refund(
         idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33,
@@ -139,10 +149,10 @@ def test_execute_refund(paytpv):
     assert res.DS_MERCHANT_CURRENCY == "EUR"
 
 
-def test_get_secure_iframe(paytpv):
-    DS_IDUSER = os.environ['DS_IDUSER']
-    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
-    DS_MERCHANT_ORDER = os.environ['DS_MERCHANT_ORDER']
+def test_get_secure_iframe(paytpv, user, order):
+    DS_IDUSER = user.DS_IDUSER
+    DS_TOKEN_USER = user.DS_TOKEN_USER
+    DS_MERCHANT_ORDER = order.DS_MERCHANT_ORDER
     urlok = "www.vinissimus.com/ok.html"
     urlko = "www.vinissimus.com/ko.html"
 
@@ -154,23 +164,18 @@ def test_get_secure_iframe(paytpv):
     assert re.match(r"(?:<iframe[^>]*)(?:(?:\/>)|(?:>.*?<\/iframe>))", res) is not None
 
 
-def test_remove_user(paytpv):
+def test_remove_user(paytpv, user):
     id_user = '0'
     token = '0'
 
     # remove non-existent user
-    res = paytpv.remove_user(idpayuser=id_user, tokenpayuser=token)
-    assert res.DS_ERROR_ID == 1001  # Usuario no encontrado.
+    with pytest.raises(SoapError):
+        res = paytpv.remove_user(idpayuser=id_user, tokenpayuser=token)
 
     # remove added users
-    DS_IDUSER = os.environ['DS_IDUSER']
-    DS_TOKEN_USER = os.environ['DS_TOKEN_USER']
-    DS_IDUSER_2 = os.environ['DS_IDUSER_2']
-    DS_TOKEN_USER_2 = os.environ['DS_TOKEN_USER_2']
+    DS_IDUSER = user.DS_IDUSER
+    DS_TOKEN_USER = user.DS_TOKEN_USER
 
     res = paytpv.remove_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
-    res.DS_RESPONSE == 1
-    res.DS_ERROR_ID == 0
-    res = paytpv.remove_user(idpayuser=DS_IDUSER_2, tokenpayuser=DS_TOKEN_USER_2)
     res.DS_RESPONSE == 1
     res.DS_ERROR_ID == 0

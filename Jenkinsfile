@@ -22,11 +22,13 @@ node {
 }
 
 def credentials() {
-    withCredentials([string(credentialsId: 'paytpv', variable: 'credentials')])
-    credentials = credentials.split('-');
-    def MERCHANTCODE = credentials[0]
-    def MERCHANTPASSWORD = credentials[1]
-    def MERCHANTTERMINAL = credentials[2]
-    def credString = "-e MERCHANTCODE=${MERCHANTCODE} -e MERCHANTPASSWORD=${MERCHANTPASSWORD} -e MERCHANTTERMINAL=${MERCHANTTERMINAL}"
+    def credString = ""
+    withCredentials([string(credentialsId: 'paytpv', variable: 'credentials')]){
+        credentials = credentials.split('-');
+        def MERCHANTCODE = credentials[0]
+        def MERCHANTPASSWORD = credentials[1]
+        def MERCHANTTERMINAL = credentials[2]
+        credString = "-e MERCHANTCODE=${MERCHANTCODE} -e MERCHANTPASSWORD=${MERCHANTPASSWORD} -e MERCHANTTERMINAL=${MERCHANTTERMINAL}"
+    }    
     return credString
 }
