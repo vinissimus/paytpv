@@ -4,6 +4,7 @@ import os
 import random
 
 import pytest
+from zeep import Client
 
 from paytpv.client import PaytpvClient
 
@@ -19,7 +20,7 @@ settings = {
 
 @pytest.fixture
 def paytpv():
-    paytpv = PaytpvClient(settings, '62.83.129.18')
+    paytpv = PaytpvClient(settings, '62.83.129.18', Client(settings['PAYTPVWSDL']))
     yield paytpv
 
 

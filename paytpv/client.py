@@ -23,7 +23,7 @@ from paytpv.exc import SoapError
 
 class PaytpvClient():
 
-    def __init__(self, settings, ip):
+    def __init__(self, settings, ip, client=None):
         """
         :param ip: Dirección IP del cliente
         """
@@ -33,10 +33,13 @@ class PaytpvClient():
         self.MERCHANTTERMINAL = settings['MERCHANTTERMINAL']
         self.PAYTPVURL = settings['PAYTPVURL']
         self.PAYTPVWSDL = settings['PAYTPVWSDL']
+        self._client = client
 
     @property
     def client(self):
-        return Client(self.PAYTPVWSDL)
+        if self._client is None:
+            self._client = Client(self.PAYTPVWSDL)
+        return self._client
 
     def signature(self, data, suma_ds):
         """

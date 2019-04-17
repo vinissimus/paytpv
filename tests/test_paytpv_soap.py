@@ -56,6 +56,7 @@ def test_connection(paytpv):
     assert paytpv.client
 
     # connection error
+    paytpv = PaytpvClient(settings, ip=None)
     paytpv.PAYTPVWSDL = 'https://localhost'
     with pytest.raises(ConnectionError):
         paytpv.client
