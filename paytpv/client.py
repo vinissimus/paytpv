@@ -274,4 +274,3 @@ class PaytpvClient():
                 frameborder="0"
                 style="background: #FFFFFF; width:100%%; height:600px"
                 src="%s"></iframe>""" % (IFRAMEURL)
-
