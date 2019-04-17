@@ -5,9 +5,9 @@ from distutils.core import setup
 setup(name='paytpv',
       version='1.0',
       description='Client api SOAP de PayTPV',
-      author='Iskra',
-      author_email='a.llusa@iskra.cat',
-      url='https://iskra.cat',
+      author='Jordi Collell',
+      author_email='jordic@vinissimus.com',
+      url='https://github.com/vinissimus/paytpv',
       packages=['paytpv'],
       install_requires=[
         'zeep',
@@ -20,4 +20,4 @@ setup(name='paytpv',
             'flake8-isort',
           ],
       },
-     )
+    )

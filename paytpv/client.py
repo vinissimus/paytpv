@@ -1,40 +1,31 @@
 # encoding: utf-8
-"""
 
-DS_ERROR_ID
------------
-https://docs.paycomet.com/es/documentacion/codigos-de-error?path=es/documentacion/codigos-de-error
-
-
-Excepcions
-----------
-
-add_user
-zeep.exceptions.ValidationError: Missing element DS_MERCHANT_CARDHOLDERNAME (add_user.DS_MERCHANT_CARDHOLDERNAME)
-
-
-"""
 from hashlib import md5, sha1
 
 from zeep import Client
 
+from paytpv.exc import SoapError
+
 
 class PaytpvClient():
 
-    def __init__(self, settings, ip):
+    def __init__(self, settings, ip, client=None):
         """
         :param ip: Dirección IP del cliente
         """
         self.ip = ip
-        self.MERCHANTCODE = settings.MERCHANTCODE
-        self.MERCHANTPASSWORD = settings.MERCHANTPASSWORD
-        self.MERCHANTTERMINAL = settings.MERCHANTTERMINAL
-        self.PAYTPVURL = settings.PAYTPVURL
-        self.PAYTPVWSDL = settings.PAYTPVWSDL
+        self.MERCHANTCODE = settings['MERCHANTCODE']
+        self.MERCHANTPASSWORD = settings['MERCHANTPASSWORD']
+        self.MERCHANTTERMINAL = settings['MERCHANTTERMINAL']
+        self.PAYTPVURL = settings['PAYTPVURL']
+        self.PAYTPVWSDL = settings['PAYTPVWSDL']
+        self._client = client
 
     @property
     def client(self):
-        return Client(self.PAYTPVWSDL)
+        if self._client is None:
+            self._client = Client(self.PAYTPVWSDL)
+        return self._client
 
     def signature(self, data, suma_ds):
         """
@@ -49,17 +40,6 @@ class PaytpvClient():
         suma = ''.join(map(data.get, signature))
         suma = suma + md5(self.MERCHANTPASSWORD.encode()).hexdigest()
         return md5(suma.encode()).hexdigest()
-
-    def data(self, data, signature):
-        """Base SOAP request data with signature"""
-        base_data = {
-            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,  # Código de cliente
-            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,  # Número de terminal
-            'DS_ORIGINAL_IP': self.ip,  # Dirección IP del cliente
-            }
-        data.update(base_data)
-        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
-        return data
 
     def add_user(self, pan, expdate, cvv, name):
         """
@@ -83,10 +63,17 @@ class PaytpvClient():
             'DS_MERCHANT_PAN': pan,  # Número de tarjeta, sin espacios ni guiones {16,19}
             'DS_MERCHANT_EXPIRYDATE': expdate,  # Fecha de caducidad mmyy
             'DS_MERCHANT_CVV2': cvv,  # Código CVC2 {3,4}
-            'DS_MERCHANT_CARDHOLDERNAME': name
+            'DS_MERCHANT_CARDHOLDERNAME': name,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_PAN', 'DS_MERCHANT_CVV2', 'DS_MERCHANT_TERMINAL']
-        return self.client.service.add_user(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.add_user(**data)
+        if res.DS_ERROR_ID != '0':
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def info_user(self, idpayuser, tokenpayuser):
         """
@@ -97,10 +84,17 @@ class PaytpvClient():
         """
         data = {
             'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser
+            'DS_TOKEN_USER': tokenpayuser,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
-        return self.client.service.info_user(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.info_user(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def remove_user(self, idpayuser, tokenpayuser):
         """
@@ -114,10 +108,17 @@ class PaytpvClient():
         """
         data = {
             'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser
+            'DS_TOKEN_USER': tokenpayuser,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
-        return self.client.service.remove_user(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.remove_user(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def execute_charge(self, idpayuser, tokenpayuser, amount, order,
                        description="", scoring=0, merchant_data="",
@@ -157,13 +158,20 @@ class PaytpvClient():
             'DS_MERCHANT_OWNER': 'Vinissimus',
             'DS_MERCHANT_SCORING': scoring,
             'DS_MERCHANT_DATA': merchant_data,
-            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
-        }
+            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
+            }
         signature = [
             'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
             'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AMOUNT', 'DS_MERCHANT_ORDER'
         ]
-        return self.client.service.execute_purchase(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.execute_purchase(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def execute_refund(self, idpayuser, tokenpayuser, amount, order, authcode, merchant_description=""):
         """
@@ -194,13 +202,20 @@ class PaytpvClient():
             'DS_MERCHANT_ORDER': order,
             'DS_MERCHANT_CURRENCY': 'EUR',
             'DS_MERCHANT_AUTHCODE': authcode,
-            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description
-        }
+            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description,
+            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
+            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
+            'DS_ORIGINAL_IP': self.ip
+            }
         signature = [
             'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
             'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AUTHCODE', 'DS_MERCHANT_ORDER'
         ]
-        return self.client.service.execute_refund(**self.data(data, signature))
+        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        res = self.client.service.execute_refund(**data)
+        if res.DS_ERROR_ID != 0:
+            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
+        return res
 
     def get_secure_iframe(self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko):
         """
@@ -260,64 +275,3 @@ class PaytpvClient():
                 style="background: #FFFFFF; width:100%%; height:600px"
                 src="%s"></iframe>""" % (IFRAMEURL)
 
-
-#   FUNCIONS EN SQL
-#
-# def saveCreditCardAlias(zope_context, id_tarjeta, info):
-#     """
-#         Guarda el alias de la CC a la bbdd.
-#     """
-#     zope_context.sql.administracion.tarjetas.paytpv.insert.insert_iduser_tarjeta(
-#         id_tarjeta=id_tarjeta, iduser=info[1], tokenuser=info[2])
-
-
-# def saveAuthorization(zope_context, id_tarjeta, importe, info):
-#     """
-#         Guarda una operació d'autorització per un import donat.
-#     """
-#     pass
-
-
-# def deleteCreditCardAlias(zope_context, id_tarjeta):
-#     """
-#         Esborra el alias de la bbdd.
-#     """
-#     zope_context.sql.administracion.tarjetas.paytpv.delete.delete_iduser(
-#         id_tarjeta=id_tarjeta)
-
-
-# def getCreditCardAlias(zope_context, id_tarjeta):
-#     """
-#         Obté el alias d'una tarja
-#     """
-#     retsql = zope_context.sql.administracion.tarjetas.paytpv.get_info(
-#         id_tarjeta=id_tarjeta)
-#     if len(retsql) != 0:
-#         iduser = retsql[0]['iduser']
-#         tokenuser = retsql[0]['tokenuser']
-#         return 0, (iduser, tokenuser)
-#     else:
-#         return 1, None
-
-
-# def checkCreditCardAlias(zope_context, id_tarjeta):
-#     """
-#         Comprova que el alias que tenim carregat encara sigui vàlid.
-#         Si hi ha algun problema retorna l'error apropiat. Si tot ok, retorna be.
-#     """
-#     # res a comprovar aquí
-#     pass
-
-
-# def getCreditCardAuthorizedAmount(zope_context, id_tarjeta):
-#     """
-#         Obté (si hi és), una operació d'autorització prèvia.
-#     """
-#     return None
-
-
-# def hasPreAuth():
-#     """
-#         True si el backend soporta preauth (i està en ús), False en cas contrari
-#     """
-#     return False
