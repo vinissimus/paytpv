@@ -1,19 +1,5 @@
 # encoding: utf-8
-"""
 
-DS_ERROR_ID
------------
-https://docs.paycomet.com/es/documentacion/codigos-de-error?path=es/documentacion/codigos-de-error
-
-
-Excepcions
-----------
-
-add_user
-zeep.exceptions.ValidationError: Missing element DS_MERCHANT_CARDHOLDERNAME (add_user.DS_MERCHANT_CARDHOLDERNAME)
-
-
-"""
 from hashlib import md5, sha1
 
 from zeep import Client
