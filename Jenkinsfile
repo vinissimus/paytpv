@@ -7,17 +7,29 @@ node {
         }
 
         stage('Build') {
-            image = docker.build("paytpv:${env.BUILD_NUMBER}")
+            docker.build("paytpv:${env.BUILD_NUMBER}")
         }
         
         stage('Test') {
-            image.inside() {
-                sh "make test"
-            }
+            image = "paytpv:${env.BUILD_NUMBER}"
+            credentials = credentials()
+            sh "docker run --rm ${credentials} ${image}"
         }
         rocketSend channel: 'jenkins', message: 'Job Success'
     } catch(e) {
         rocketSend channel: 'jenkins', message: 'Job Failed'
         throw e
     }
+}
+
+def credentials() {
+    def credString = ""
+    withCredentials([string(credentialsId: 'paytpv', variable: 'credentials')]){
+        credentials = credentials.split('-');
+        def MERCHANTCODE = credentials[0]
+        def MERCHANTPASSWORD = credentials[1]
+        def MERCHANTTERMINAL = credentials[2]
+        credString = "-e MERCHANTCODE=${MERCHANTCODE} -e MERCHANTPASSWORD=${MERCHANTPASSWORD} -e MERCHANTTERMINAL=${MERCHANTTERMINAL}"
+    }    
+    return credString
 }
