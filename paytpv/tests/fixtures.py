@@ -6,6 +6,7 @@ import os
 import pytest
 
 from paytpv.client import PaytpvClient
+from paytpv.client import PaytpvAsyncClient
 
 
 @pytest.fixture
@@ -26,7 +27,7 @@ def paytpv(settings):
 
 
 @pytest.fixture
-def paytpv_async(settings):
+def paytpv_async(settings, event_loop):
     return PaytpvAsyncClient(settings, "1.2.3.4")
 
 

@@ -47,9 +47,9 @@ def test_connection(paytpv, settings):
     assert paytpv.client
 
     # connection error
-    settings["PAYTPVWSDL"] = 'https://localhost'
-    paytpv = PaytpvClient(settings, ip="1.2.3.4")
     with pytest.raises(ConnectionError):
+        settings["PAYTPVWSDL"] = 'https://localhost'
+        paytpv = PaytpvClient(settings, ip="1.2.3.4")
         paytpv.client
 
 
@@ -84,23 +84,21 @@ def test_add_user(paytpv):
 
 
 @pytest.mark.asyncio
-async def test_add_user_async(payptv_async, settings):
-    paytpv = paytpv_async
-
+async def test_add_user_async(paytpv_async, event_loop):
     # error expdate
     with pytest.raises(PaytpvException) as e:
-        res = await paytpv.add_user(pan='1', expdate='1', cvv='1', name='1')
+        res = await paytpv_async.add_user(pan='1', expdate='1', cvv='1', name='1')
 
     assert e.value.code == 109  # Expiry date error
 
     # new user
-    res = await paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
+    res = await paytpv_async.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
     assert res.DS_ERROR_ID == '0'
     DS_IDUSER = res.DS_IDUSER
     DS_TOKEN_USER = res.DS_TOKEN_USER
 
     # already added user
-    res = await paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
+    res = await paytpv_async.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
     assert res.DS_ERROR_ID == '0'
     assert DS_IDUSER != res.DS_IDUSER
     assert DS_TOKEN_USER != res.DS_TOKEN_USER
@@ -108,10 +106,10 @@ async def test_add_user_async(payptv_async, settings):
     DS_TOKEN_USER_2 = res.DS_TOKEN_USER
 
     # remove added users
-    res = await paytpv.remove_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
+    res = await paytpv_async.remove_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
     res.DS_RESPONSE == 1
     res.DS_ERROR_ID == 0
-    res = await paytpv.remove_user(idpayuser=DS_IDUSER_2, tokenpayuser=DS_TOKEN_USER_2)
+    res = await paytpv_async.remove_user(idpayuser=DS_IDUSER_2, tokenpayuser=DS_TOKEN_USER_2)
     res.DS_RESPONSE == 1
     res.DS_ERROR_ID == 0
 

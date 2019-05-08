@@ -270,8 +270,11 @@ class PaytpvClient(RequestBuilder):
         return super().__getattribute__(name)
 
     def proxy(self, method_name, *args, **kwargs):
+        # Get request data for 'method_name' from RequestBuilder
         method = super().__getattribute__(method_name)
         data = method(*args, **kwargs)
+
+        # Get SOAP method 'method_name'
         soap_method = self.client.service.__getattr__(method_name)
 
         res = soap_method(**data)
@@ -300,8 +303,11 @@ class PaytpvAsyncClient(RequestBuilder):
         return super().__getattribute__(name)
 
     async def proxy(self, method_name, *args, **kwargs):
+        # Get request data for 'method_name' from RequestBuilder
         method = super().__getattribute__(method_name)
         data = method(*args, **kwargs)
+
+        # Get SOAP method 'method_name'
         soap_method = self.client.service.__getattr__(method_name)
 
         res = await soap_method(**data)
