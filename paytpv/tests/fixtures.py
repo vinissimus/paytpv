@@ -1,27 +1,30 @@
 # encoding: utf-8
 import datetime
-import os
 import random
 
 import pytest
+import os
 from zeep import Client
 
 from paytpv.client import PaytpvClient
 
 
-settings = {
-    'MERCHANTCODE': os.environ['MERCHANTCODE'],
-    'MERCHANTPASSWORD': os.environ['MERCHANTPASSWORD'],
-    'MERCHANTTERMINAL': os.environ['MERCHANTTERMINAL'],
-    'PAYTPVURL': "https://secure.paytpv.com/gateway/xml-bankstore",
-    'PAYTPVWSDL': "https://secure.paytpv.com/gateway/xml-bankstore?wsdl"
-}
+@pytest.fixture
+def settings():
+    settings = {
+        'MERCHANTCODE': os.environ["MERCHANTCODE"],
+        'MERCHANTPASSWORD': os.environ["MERCHANTPASSWORD"],
+        'MERCHANTTERMINAL': os.environ["MERCHANTTERMINAL"],
+        'PAYTPVURL': "https://secure.paytpv.com/gateway/xml-bankstore",
+        'PAYTPVWSDL': "https://secure.paytpv.com/gateway/xml-bankstore?wsdl"
+    }
+    return settings
 
 
 @pytest.fixture
-def paytpv():
-    paytpv = PaytpvClient(settings, '62.83.129.18', Client(settings['PAYTPVWSDL']))
-    yield paytpv
+def paytpv(settings):
+    ip = os.environ["IP"]  # '62.83.129.18'
+    return PaytpvClient(settings, ip)
 
 
 @pytest.fixture
@@ -42,7 +45,7 @@ def order(paytpv, user):
     DS_IDUSER = user.DS_IDUSER
     DS_TOKEN_USER = user.DS_TOKEN_USER
     DS_MERCHANT_ORDER = str(random.random())
-    res = paytpv.execute_charge(
+    res = paytpv.execute_purchase(
         idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER,
         amount=33, order=DS_MERCHANT_ORDER
     )

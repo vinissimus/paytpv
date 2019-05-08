@@ -1,15 +1,14 @@
 # encoding: utf-8
 
+from functools import partial
 from hashlib import md5, sha1
-
+from paytpv.exc import PaytpvException
 from zeep import Client
 
-from paytpv.exc import SoapError
 
+class _PaytpvClient():
 
-class PaytpvClient():
-
-    def __init__(self, settings, ip, client=None):
+    def __init__(self, settings, ip, transport=None):
         """
         :param ip: Dirección IP del cliente
         """
@@ -19,12 +18,17 @@ class PaytpvClient():
         self.MERCHANTTERMINAL = settings['MERCHANTTERMINAL']
         self.PAYTPVURL = settings['PAYTPVURL']
         self.PAYTPVWSDL = settings['PAYTPVWSDL']
-        self._client = client
+        self.transport = transport
+        self._client = None
 
     @property
     def client(self):
         if self._client is None:
-            self._client = Client(self.PAYTPVWSDL)
+            kwargs = {}
+            if self.transport:
+                kwargs["transport"] = self.transport
+
+            self._client = Client(self.PAYTPVWSDL, **kwargs)
         return self._client
 
     def signature(self, data, suma_ds):
@@ -70,10 +74,7 @@ class PaytpvClient():
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_PAN', 'DS_MERCHANT_CVV2', 'DS_MERCHANT_TERMINAL']
         data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
-        res = self.client.service.add_user(**data)
-        if res.DS_ERROR_ID != '0':
-            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
-        return res
+        return data
 
     def info_user(self, idpayuser, tokenpayuser):
         """
@@ -91,10 +92,7 @@ class PaytpvClient():
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
         data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
-        res = self.client.service.info_user(**data)
-        if res.DS_ERROR_ID != 0:
-            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
-        return res
+        return data
 
     def remove_user(self, idpayuser, tokenpayuser):
         """
@@ -115,14 +113,11 @@ class PaytpvClient():
             }
         signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
         data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
-        res = self.client.service.remove_user(**data)
-        if res.DS_ERROR_ID != 0:
-            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
-        return res
+        return data
 
-    def execute_charge(self, idpayuser, tokenpayuser, amount, order,
-                       description="", scoring=0, merchant_data="",
-                       merchant_description=""):
+    def execute_purchase(self, idpayuser, tokenpayuser, amount, order,
+                         description="", scoring=0, merchant_data="",
+                         merchant_description=""):
         """
         * Realiza un cobro mediante llamada soap.
         * @param int $idpayuser Id de usuario en PAYTPV
@@ -168,10 +163,7 @@ class PaytpvClient():
             'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AMOUNT', 'DS_MERCHANT_ORDER'
         ]
         data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
-        res = self.client.service.execute_purchase(**data)
-        if res.DS_ERROR_ID != 0:
-            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
-        return res
+        return data
 
     def execute_refund(self, idpayuser, tokenpayuser, amount, order, authcode, merchant_description=""):
         """
@@ -212,10 +204,7 @@ class PaytpvClient():
             'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AUTHCODE', 'DS_MERCHANT_ORDER'
         ]
         data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
-        res = self.client.service.execute_refund(**data)
-        if res.DS_ERROR_ID != 0:
-            raise SoapError("Error: {}".format(res.DS_ERROR_ID))
-        return res
+        return data
 
     def get_secure_iframe(self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko):
         """
@@ -274,3 +263,40 @@ class PaytpvClient():
                 frameborder="0"
                 style="background: #FFFFFF; width:100%%; height:600px"
                 src="%s"></iframe>""" % (IFRAMEURL)
+
+
+class PaytpvClient(_PaytpvClient):
+
+    methods = ["add_user", "info_user", "remove_user", "execute_purchase", "execute_refund"]
+
+    def __getattribute__(self, name):
+        if name in PaytpvClient.methods:
+            return partial(self.proxy, name)
+        return super().__getattribute__(name)
+
+    def proxy(self, method_name, *args, **kwargs):
+        method = super().__getattribute__(method_name)
+        data = method(*args, **kwargs)
+        soap_method = self.client.service.__getattr__(method_name)
+
+        res = soap_method(**data)
+        if int(res.DS_ERROR_ID) != 0:
+            raise PaytpvException(res.DS_ERROR_ID)
+        return res
+
+
+class PaytpvAsyncClient(PaytpvClient):
+
+    def __init__(self, *args, **kwargs):
+        from zeep.asyncio import AsyncTransport
+        super().__init__(*args, **kwargs, transport=AsyncTransport)
+
+    async def proxy(self, soap_method, data):
+        method = super().__getattribute__(method_name)
+        data = method(*args, **kwargs)
+        soap_method = self.client.service.__getattr__(method_name)
+
+        res = await soap_method(**data)
+        if int(res.DS_ERROR_ID) != 0:
+            raise PaytpvException(res.DS_ERROR_ID)
+        return res

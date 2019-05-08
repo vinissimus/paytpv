@@ -9,7 +9,7 @@ import pytest
 from requests.exceptions import ConnectionError
 
 from paytpv.client import PaytpvClient
-from paytpv.exc import SoapError
+from paytpv.exc import PaytpvException
 
 
 T1 = '4539232076648253'
@@ -23,16 +23,8 @@ CADUCA = '05' + str(YEAR)[2:]  # 05 y año: año actual + 1
 CVV = '123'
 D3Secure = '1234'
 
-settings = {
-    'MERCHANTCODE': os.environ['MERCHANTCODE'],
-    'MERCHANTPASSWORD': os.environ['MERCHANTPASSWORD'],
-    'MERCHANTTERMINAL': os.environ['MERCHANTTERMINAL'],
-    'PAYTPVURL': "https://secure.paytpv.com/gateway/xml-bankstore",
-    'PAYTPVWSDL': "https://secure.paytpv.com/gateway/xml-bankstore?wsdl"
-}
 
-
-def test_signature():
+def test_signature(paytpv, settings):
 
     data = {
         'DS_MERCHANT_MERCHANTCODE': '1',
@@ -44,14 +36,13 @@ def test_signature():
         }
     signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_PAN', 'DS_MERCHANT_CVV2', 'DS_MERCHANT_TERMINAL']
 
-    paytpv = PaytpvClient(settings, ip=None)
     sign = paytpv.signature(data, signature)
     code = '1234' + settings['MERCHANTPASSWORD']
 
     assert sign == sha1(code.encode()).hexdigest()
 
 
-def test_connection(paytpv):
+def test_connection(paytpv, settings):
     # ok
     assert paytpv.client
 
@@ -63,10 +54,11 @@ def test_connection(paytpv):
 
 
 def test_add_user(paytpv):
-
     # error expdate
-    with pytest.raises(SoapError):
+    with pytest.raises(PaytpvException) as e:
         res = paytpv.add_user(pan='1', expdate='1', cvv='1', name='1')
+
+    assert e.value.code == 109  # Expiry date error
 
     # new user
     res = paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
@@ -96,8 +88,10 @@ def test_info_user(paytpv, user):
     token = '0'
 
     # non-existent user
-    with pytest.raises(SoapError):
+    with pytest.raises(PaytpvException) as e:
         res = paytpv.info_user(idpayuser=id_user, tokenpayuser=token)
+
+    assert e.value.code == 1001  # User not found. Please contact your administrator
 
     # Existent user
     DS_IDUSER = user.DS_IDUSER
@@ -114,18 +108,20 @@ def test_info_user(paytpv, user):
     assert res.DS_CARD_CATEGORY == 'BUSINESS'
 
 
-def test_execute_charge(paytpv, user):
+def test_execute_purchase(paytpv, user):
 
     # charge non-existent user
-    with pytest.raises(SoapError):
-        res = paytpv.execute_charge(idpayuser='0', tokenpayuser='0', amount=33, order='3')
+    with pytest.raises(PaytpvException) as e:
+        res = paytpv.execute_purchase(idpayuser='0', tokenpayuser='0', amount=33, order='3')
+
+    assert e.value.code == 1001  # User not found. Please contact your administrator
 
     # charge
     DS_IDUSER = user.DS_IDUSER
     DS_TOKEN_USER = user.DS_TOKEN_USER
     DS_MERCHANT_ORDER = str(random.random())
 
-    res = paytpv.execute_charge(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33, order=DS_MERCHANT_ORDER)
+    res = paytpv.execute_purchase(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER, amount=33, order=DS_MERCHANT_ORDER)
     assert res.DS_ERROR_ID == 0
     assert res.DS_MERCHANT_AMOUNT == 3300
     assert res.DS_MERCHANT_ORDER == DS_MERCHANT_ORDER
@@ -170,7 +166,7 @@ def test_remove_user(paytpv, user):
     token = '0'
 
     # remove non-existent user
-    with pytest.raises(SoapError):
+    with pytest.raises(PaytpvException):
         res = paytpv.remove_user(idpayuser=id_user, tokenpayuser=token)
 
     # remove added users

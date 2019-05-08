@@ -1,6 +1,8 @@
 # encoding: utf-8
 
 
-class SoapError(Exception):
-    """Base class for exceptions in this module."""
-    pass
+class PaytpvException(Exception):
+
+    def __init__(self, code):
+        super().__init__("Error: {}".format(code))
+        self.code = int(code)
