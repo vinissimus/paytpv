@@ -9,11 +9,12 @@ node {
         stage('Build') {
             docker.build("paytpv:${env.BUILD_NUMBER}")
         }
-        
+
         stage('Test') {
             image = "paytpv:${env.BUILD_NUMBER}"
-            credentials = credentials()
-            sh "docker run --rm ${credentials} ${image}"
+            dev_credentials('credentials') {
+                sh "docker run --rm ${credentials} ${image}"
+            }
         }
         rocketSend channel: 'jenkins', message: 'Job Success'
     } catch(e) {
@@ -22,14 +23,16 @@ node {
     }
 }
 
-def credentials() {
-    def credString = ""
-    withCredentials([string(credentialsId: 'paytpv', variable: 'credentials')]){
-        credentials = credentials.split('-');
-        def MERCHANTCODE = credentials[0]
-        def MERCHANTPASSWORD = credentials[1]
-        def MERCHANTTERMINAL = credentials[2]
-        credString = "-e MERCHANTCODE=${MERCHANTCODE} -e MERCHANTPASSWORD=${MERCHANTPASSWORD} -e MERCHANTTERMINAL=${MERCHANTTERMINAL}"
-    }    
-    return credString
+def dev_credentials(variable, cl) {
+    withCredentials([string(credentialsId: 'paytpv', variable: 'c')]){
+        c = c.split('-');
+        def MERCHANTCODE = c[0]
+        def MERCHANTPASSWORD = c[1]
+        def MERCHANTTERMINAL = c[2]
+        def credentials = "-e MERCHANTCODE=${MERCHANTCODE} -e MERCHANTPASSWORD=${MERCHANTPASSWORD} -e MERCHANTTERMINAL=${MERCHANTTERMINAL}"
+
+        withEnv(["${variable}=${credentials}"]) {
+            cl()
+        }
+    }
 }

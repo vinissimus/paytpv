@@ -11,12 +11,17 @@ setup(name='paytpv',
       packages=['paytpv'],
       install_requires=[
         'zeep',
-        ],
+      ],
       extras_require={
+        'async': [
+          'zeep[async]',
+          'aiohttp',
+        ],
         'test': [
             'pytest',
             'pytest-cov',
             'pytest-flake8',
+            'pytest-asyncio',
             'flake8-isort',
           ],
       },

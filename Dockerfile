@@ -1,7 +1,8 @@
-FROM python:3
+FROM python:3.7
 
 COPY . .
 
-RUN pip install -e .[test]
+RUN pip install -e .[async] && \
+    pip install -e .[test]
 
 CMD [ "make", "test" ]
