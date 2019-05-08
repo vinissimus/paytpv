@@ -26,6 +26,11 @@ def paytpv(settings):
 
 
 @pytest.fixture
+def paytpv_async(settings):
+    return PaytpvAsyncClient(settings, "1.2.3.4")
+
+
+@pytest.fixture
 def user(paytpv):
     NAME = 'Test Vinissimus'
     YEAR = datetime.datetime.now().year + 1

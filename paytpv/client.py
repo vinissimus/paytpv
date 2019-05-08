@@ -1,3 +1,5 @@
+import asyncio
+
 from functools import partial
 from hashlib import md5, sha1
 
@@ -5,11 +7,10 @@ from paytpv.exc import PaytpvException
 from zeep import Client
 
 
-class _PaytpvClient():
+class RequestBuilder():
 
-    def __init__(self, settings, ip, transport=None):
+    def __init__(self, settings, ip, client):
         """
-        :param ip: Dirección IP del cliente
         """
         self.ip = ip
         self.MERCHANTCODE = settings['MERCHANTCODE']
@@ -17,18 +18,7 @@ class _PaytpvClient():
         self.MERCHANTTERMINAL = settings['MERCHANTTERMINAL']
         self.PAYTPVURL = settings['PAYTPVURL']
         self.PAYTPVWSDL = settings['PAYTPVWSDL']
-        self.transport = transport
-        self._client = None
-
-    @property
-    def client(self):
-        if self._client is None:
-            kwargs = {}
-            if self.transport:
-                kwargs["transport"] = self.transport
-
-            self._client = Client(self.PAYTPVWSDL, **kwargs)
-        return self._client
+        self.client = client
 
     def signature(self, data, suma_ds):
         """
@@ -264,9 +254,15 @@ class _PaytpvClient():
                 src="%s"></iframe>""" % (IFRAMEURL)
 
 
-class PaytpvClient(_PaytpvClient):
+class PaytpvClient(RequestBuilder):
 
-    methods = ["add_user", "info_user", "remove_user", "execute_purchase", "execute_refund"]
+    methods = [
+        "add_user", "info_user", "remove_user", "execute_purchase", "execute_refund"
+    ]
+
+    def __init__(self, settings, ip=None):
+        client = Client(settings['PAYTPVWSDL'])
+        super().__init__(settings, ip, client)
 
     def __getattribute__(self, name):
         if name in PaytpvClient.methods:
@@ -284,11 +280,24 @@ class PaytpvClient(_PaytpvClient):
         return res
 
 
-class PaytpvAsyncClient(PaytpvClient):
+class PaytpvAsyncClient(RequestBuilder):
 
-    def __init__(self, *args, **kwargs):
+    methods = [
+        "add_user", "info_user", "remove_user", "execute_purchase", "execute_refund"
+    ]
+
+    def __init__(self, settings, ip):
         from zeep.asyncio import AsyncTransport
-        super().__init__(*args, **kwargs, transport=AsyncTransport)
+        client = Client(
+            settings['PAYTPVWSDL'],
+            transport=AsyncTransport(loop=asyncio.get_event_loop())
+        )
+        super().__init__(settings, ip, client)
+
+    def __getattribute__(self, name):
+        if name in PaytpvClient.methods:
+            return partial(self.proxy, name)
+        return super().__getattribute__(name)
 
     async def proxy(self, method_name, *args, **kwargs):
         method = super().__getattribute__(method_name)

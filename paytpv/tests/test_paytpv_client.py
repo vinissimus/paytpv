@@ -8,6 +8,7 @@ import pytest
 from requests.exceptions import ConnectionError
 
 from paytpv.client import PaytpvClient
+from paytpv.client import PaytpvAsyncClient
 from paytpv.exc import PaytpvException
 
 
@@ -46,8 +47,8 @@ def test_connection(paytpv, settings):
     assert paytpv.client
 
     # connection error
-    paytpv = PaytpvClient(settings, ip=None)
-    paytpv.PAYTPVWSDL = 'https://localhost'
+    settings["PAYTPVWSDL"] = 'https://localhost'
+    paytpv = PaytpvClient(settings, ip="1.2.3.4")
     with pytest.raises(ConnectionError):
         paytpv.client
 
@@ -78,6 +79,39 @@ def test_add_user(paytpv):
     res.DS_RESPONSE == 1
     res.DS_ERROR_ID == 0
     res = paytpv.remove_user(idpayuser=DS_IDUSER_2, tokenpayuser=DS_TOKEN_USER_2)
+    res.DS_RESPONSE == 1
+    res.DS_ERROR_ID == 0
+
+
+@pytest.mark.asyncio
+async def test_add_user_async(payptv_async, settings):
+    paytpv = paytpv_async
+
+    # error expdate
+    with pytest.raises(PaytpvException) as e:
+        res = await paytpv.add_user(pan='1', expdate='1', cvv='1', name='1')
+
+    assert e.value.code == 109  # Expiry date error
+
+    # new user
+    res = await paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
+    assert res.DS_ERROR_ID == '0'
+    DS_IDUSER = res.DS_IDUSER
+    DS_TOKEN_USER = res.DS_TOKEN_USER
+
+    # already added user
+    res = await paytpv.add_user(pan=T1, expdate=CADUCA, cvv=CVV, name=NAME)
+    assert res.DS_ERROR_ID == '0'
+    assert DS_IDUSER != res.DS_IDUSER
+    assert DS_TOKEN_USER != res.DS_TOKEN_USER
+    DS_IDUSER_2 = res.DS_IDUSER
+    DS_TOKEN_USER_2 = res.DS_TOKEN_USER
+
+    # remove added users
+    res = await paytpv.remove_user(idpayuser=DS_IDUSER, tokenpayuser=DS_TOKEN_USER)
+    res.DS_RESPONSE == 1
+    res.DS_ERROR_ID == 0
+    res = await paytpv.remove_user(idpayuser=DS_IDUSER_2, tokenpayuser=DS_TOKEN_USER_2)
     res.DS_RESPONSE == 1
     res.DS_ERROR_ID == 0
 
