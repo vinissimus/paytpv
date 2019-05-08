@@ -2,9 +2,8 @@
 import datetime
 import random
 
-import pytest
 import os
-from zeep import Client
+import pytest
 
 from paytpv.client import PaytpvClient
 
@@ -23,8 +22,7 @@ def settings():
 
 @pytest.fixture
 def paytpv(settings):
-    ip = os.environ["IP"]  # '62.83.129.18'
-    return PaytpvClient(settings, ip)
+    return PaytpvClient(settings, "1.2.3.4")
 
 
 @pytest.fixture

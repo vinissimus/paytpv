@@ -1,7 +1,6 @@
-# encoding: utf-8
-
 from functools import partial
 from hashlib import md5, sha1
+
 from paytpv.exc import PaytpvException
 from zeep import Client
 
@@ -291,7 +290,7 @@ class PaytpvAsyncClient(PaytpvClient):
         from zeep.asyncio import AsyncTransport
         super().__init__(*args, **kwargs, transport=AsyncTransport)
 
-    async def proxy(self, soap_method, data):
+    async def proxy(self, method_name, *args, **kwargs):
         method = super().__getattribute__(method_name)
         data = method(*args, **kwargs)
         soap_method = self.client.service.__getattr__(method_name)
