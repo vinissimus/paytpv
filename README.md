@@ -6,7 +6,10 @@ Paytpv api SOAP wrap
 
 ## Install Requirements
 
-`pip install -e .[test]`
+```
+pip install paytpv
+pip install paytpv[async]  # optional
+```
 
 ## Run tests
 
