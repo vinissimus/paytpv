@@ -7,9 +7,9 @@ from paytpv.exc import PaytpvException
 from zeep import Client
 
 
-class RequestBuilder():
+class RequestBuilder:
 
-    def __init__(self, settings, ip, client):
+    def __init__(self, settings, ip=None):
         """
         """
         self.ip = ip
@@ -18,7 +18,6 @@ class RequestBuilder():
         self.MERCHANTTERMINAL = settings['MERCHANTTERMINAL']
         self.PAYTPVURL = settings['PAYTPVURL']
         self.PAYTPVWSDL = settings['PAYTPVWSDL']
-        self.client = client
 
     def signature(self, data, suma_ds):
         """
@@ -36,7 +35,8 @@ class RequestBuilder():
 
     def add_user(self, pan, expdate, cvv, name):
         """
-        * Añade una tarjeta a PAYTPV. ¡¡¡ IMPORTANTE !!! Esta entrada directa debe ser activada por PAYTPV.
+        * Añade una tarjeta a PAYTPV. ¡¡¡ IMPORTANTE !!!
+          Esta entrada directa debe ser activada por PAYTPV.
         * En su defecto el método de entrada de tarjeta para el cumplimiento del
           PCI-DSS debe ser AddUserUrl o AddUserToken (método utilizado por BankStore JET)
         * @param int $pan Número de tarjeta, sin espacios ni guiones
@@ -254,57 +254,46 @@ class RequestBuilder():
                 src="%s"></iframe>""" % (IFRAMEURL)
 
 
-class PaytpvClient(RequestBuilder):
+class PaytpvClient:
 
     methods = [
         "add_user", "info_user", "remove_user", "execute_purchase", "execute_refund"
     ]
 
-    def __init__(self, settings, ip=None):
-        client = Client(settings['PAYTPVWSDL'])
-        super().__init__(settings, ip, client)
+    def __init__(self, settings, ip, client=None):
+        self.client = client or Client(settings['PAYTPVWSDL'])
+        self.builder = RequestBuilder(settings, ip)
 
-    def __getattribute__(self, name):
+    def __getattr__(self, name):
         if name in PaytpvClient.methods:
             return partial(self.proxy, name)
-        return super().__getattribute__(name)
+        return getattr(self.builder, name)
 
     def proxy(self, method_name, *args, **kwargs):
         # Get request data for 'method_name' from RequestBuilder
-        method = super().__getattribute__(method_name)
+        method = getattr(self.builder, method_name)
         data = method(*args, **kwargs)
 
         # Get SOAP method 'method_name'
         soap_method = self.client.service.__getattr__(method_name)
-
         res = soap_method(**data)
         if int(res.DS_ERROR_ID) != 0:
             raise PaytpvException(res.DS_ERROR_ID)
         return res
 
 
-class PaytpvAsyncClient(RequestBuilder):
+class PaytpvAsyncClient(PaytpvClient):
 
-    methods = [
-        "add_user", "info_user", "remove_user", "execute_purchase", "execute_refund"
-    ]
-
-    def __init__(self, settings, ip):
+    def __init__(self, settings, ip=None, client=None):
         from zeep.asyncio import AsyncTransport
-        client = Client(
+        self.client = client or Client(
             settings['PAYTPVWSDL'],
             transport=AsyncTransport(loop=asyncio.get_event_loop())
         )
-        super().__init__(settings, ip, client)
-
-    def __getattribute__(self, name):
-        if name in PaytpvClient.methods:
-            return partial(self.proxy, name)
-        return super().__getattribute__(name)
+        self.builder = RequestBuilder(settings, ip)
 
     async def proxy(self, method_name, *args, **kwargs):
-        # Get request data for 'method_name' from RequestBuilder
-        method = super().__getattribute__(method_name)
+        method = getattr(self.builder, method_name)
         data = method(*args, **kwargs)
 
         # Get SOAP method 'method_name'
