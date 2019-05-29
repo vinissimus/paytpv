@@ -8,28 +8,27 @@ from zeep import Client
 
 
 class RequestBuilder:
-
     def __init__(self, settings, ip=None):
         """
         """
         self.ip = ip
-        self.MERCHANTCODE = settings['MERCHANTCODE']
-        self.MERCHANTPASSWORD = settings['MERCHANTPASSWORD']
-        self.MERCHANTTERMINAL = settings['MERCHANTTERMINAL']
-        self.PAYTPVURL = settings['PAYTPVURL']
-        self.PAYTPVWSDL = settings['PAYTPVWSDL']
+        self.MERCHANTCODE = settings["MERCHANTCODE"]
+        self.MERCHANTPASSWORD = settings["MERCHANTPASSWORD"]
+        self.MERCHANTTERMINAL = settings["MERCHANTTERMINAL"]
+        self.PAYTPVURL = settings["PAYTPVURL"]
+        self.PAYTPVWSDL = settings["PAYTPVWSDL"]
 
     def signature(self, data, suma_ds):
         """
         """
-        suma = ''.join(map(data.get, suma_ds))
+        suma = "".join(map(data.get, suma_ds))
         suma = suma + self.MERCHANTPASSWORD
         return sha1(suma.encode()).hexdigest()
 
     def iframe_signature(self, data, signature):
         """
         """
-        suma = ''.join(map(data.get, signature))
+        suma = "".join(map(data.get, signature))
         suma = suma + md5(self.MERCHANTPASSWORD.encode()).hexdigest()
         return md5(suma.encode()).hexdigest()
 
@@ -53,16 +52,21 @@ class RequestBuilder:
           }
         """
         data = {
-            'DS_MERCHANT_PAN': pan,  # Número de tarjeta, sin espacios ni guiones {16,19}
-            'DS_MERCHANT_EXPIRYDATE': expdate,  # Fecha de caducidad mmyy
-            'DS_MERCHANT_CVV2': cvv,  # Código CVC2 {3,4}
-            'DS_MERCHANT_CARDHOLDERNAME': name,
-            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
-            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
-            'DS_ORIGINAL_IP': self.ip
-            }
-        signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_MERCHANT_PAN', 'DS_MERCHANT_CVV2', 'DS_MERCHANT_TERMINAL']
-        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+            "DS_MERCHANT_PAN": pan,  # Número de tarjeta, sin espacios ni guiones {16,19}
+            "DS_MERCHANT_EXPIRYDATE": expdate,  # Fecha de caducidad mmyy
+            "DS_MERCHANT_CVV2": cvv,  # Código CVC2 {3,4}
+            "DS_MERCHANT_CARDHOLDERNAME": name,
+            "DS_MERCHANT_MERCHANTCODE": self.MERCHANTCODE,
+            "DS_MERCHANT_TERMINAL": self.MERCHANTTERMINAL,
+            "DS_ORIGINAL_IP": self.ip,
+        }
+        signature = [
+            "DS_MERCHANT_MERCHANTCODE",
+            "DS_MERCHANT_PAN",
+            "DS_MERCHANT_CVV2",
+            "DS_MERCHANT_TERMINAL",
+        ]
+        data["DS_MERCHANT_MERCHANTSIGNATURE"] = self.signature(data, signature)
         return data
 
     def info_user(self, idpayuser, tokenpayuser):
@@ -73,14 +77,19 @@ class RequestBuilder:
         * @return object Objeto de respuesta de la operación
         """
         data = {
-            'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser,
-            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
-            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
-            'DS_ORIGINAL_IP': self.ip
-            }
-        signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
-        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+            "DS_IDUSER": idpayuser,
+            "DS_TOKEN_USER": tokenpayuser,
+            "DS_MERCHANT_MERCHANTCODE": self.MERCHANTCODE,
+            "DS_MERCHANT_TERMINAL": self.MERCHANTTERMINAL,
+            "DS_ORIGINAL_IP": self.ip,
+        }
+        signature = [
+            "DS_MERCHANT_MERCHANTCODE",
+            "DS_IDUSER",
+            "DS_TOKEN_USER",
+            "DS_MERCHANT_TERMINAL",
+        ]
+        data["DS_MERCHANT_MERCHANTSIGNATURE"] = self.signature(data, signature)
         return data
 
     def remove_user(self, idpayuser, tokenpayuser):
@@ -94,19 +103,32 @@ class RequestBuilder:
 
         """
         data = {
-            'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser,
-            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
-            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
-            'DS_ORIGINAL_IP': self.ip
-            }
-        signature = ['DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER', 'DS_MERCHANT_TERMINAL']
-        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+            "DS_IDUSER": idpayuser,
+            "DS_TOKEN_USER": tokenpayuser,
+            "DS_MERCHANT_MERCHANTCODE": self.MERCHANTCODE,
+            "DS_MERCHANT_TERMINAL": self.MERCHANTTERMINAL,
+            "DS_ORIGINAL_IP": self.ip,
+        }
+        signature = [
+            "DS_MERCHANT_MERCHANTCODE",
+            "DS_IDUSER",
+            "DS_TOKEN_USER",
+            "DS_MERCHANT_TERMINAL",
+        ]
+        data["DS_MERCHANT_MERCHANTSIGNATURE"] = self.signature(data, signature)
         return data
 
-    def execute_purchase(self, idpayuser, tokenpayuser, amount, order,
-                         description="", scoring=0, merchant_data="",
-                         merchant_description=""):
+    def execute_purchase(
+        self,
+        idpayuser,
+        tokenpayuser,
+        amount,
+        order,
+        description="",
+        scoring=0,
+        merchant_data="",
+        merchant_description="",
+    ):
         """
         * Realiza un cobro mediante llamada soap.
         * @param int $idpayuser Id de usuario en PAYTPV
@@ -117,44 +139,49 @@ class RequestBuilder:
         """
         if amount <= 0:
             raise ValueError(
-                u'paytpv.executeCharge(): el importe debe ser positivo: %s'
-                % (amount)
+                u"paytpv.executeCharge(): el importe debe ser positivo: %s" % (amount)
             )
         s_amount = str(int(round(amount * 100, 0)))
         if len(order) > 20:
             raise ValueError(
-                u'paytpv.executeCharge(): la longitud máxima de order es 20: %s'
+                u"paytpv.executeCharge(): la longitud máxima de order es 20: %s"
                 % (order)
             )
         if len(description) > 40:
             raise ValueError(
-                u'paytpv.executeCharge(): la longitud máxima de description es 40: %s'
+                u"paytpv.executeCharge(): la longitud máxima de description es 40: %s"
                 % (description)
             )
 
         data = {
-            'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser,
-            'DS_MERCHANT_AMOUNT': s_amount,
-            'DS_MERCHANT_ORDER': order,
-            'DS_MERCHANT_CURRENCY': 'EUR',
-            'DS_MERCHANT_PRODUCTDESCRIPTION': description,
-            'DS_MERCHANT_OWNER': 'Vinissimus',
-            'DS_MERCHANT_SCORING': scoring,
-            'DS_MERCHANT_DATA': merchant_data,
-            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description,
-            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
-            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
-            'DS_ORIGINAL_IP': self.ip
-            }
+            "DS_IDUSER": idpayuser,
+            "DS_TOKEN_USER": tokenpayuser,
+            "DS_MERCHANT_AMOUNT": s_amount,
+            "DS_MERCHANT_ORDER": order,
+            "DS_MERCHANT_CURRENCY": "EUR",
+            "DS_MERCHANT_PRODUCTDESCRIPTION": description,
+            "DS_MERCHANT_OWNER": "Vinissimus",
+            "DS_MERCHANT_SCORING": scoring,
+            "DS_MERCHANT_DATA": merchant_data,
+            "DS_MERCHANT_MERCHANTDESCRIPTOR": merchant_description,
+            "DS_MERCHANT_MERCHANTCODE": self.MERCHANTCODE,
+            "DS_MERCHANT_TERMINAL": self.MERCHANTTERMINAL,
+            "DS_ORIGINAL_IP": self.ip,
+        }
         signature = [
-            'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
-            'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AMOUNT', 'DS_MERCHANT_ORDER'
+            "DS_MERCHANT_MERCHANTCODE",
+            "DS_IDUSER",
+            "DS_TOKEN_USER",
+            "DS_MERCHANT_TERMINAL",
+            "DS_MERCHANT_AMOUNT",
+            "DS_MERCHANT_ORDER",
         ]
-        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        data["DS_MERCHANT_MERCHANTSIGNATURE"] = self.signature(data, signature)
         return data
 
-    def execute_refund(self, idpayuser, tokenpayuser, amount, order, authcode, merchant_description=""):
+    def execute_refund(
+        self, idpayuser, tokenpayuser, amount, order, authcode, merchant_description=""
+    ):
         """
         * Realiza devolución mediante llamada soap
         * @param int $idpayuser Id de usuario en PAYTPV
@@ -166,36 +193,41 @@ class RequestBuilder:
         """
         if amount <= 0:
             raise ValueError(
-                u'paytpv.executeCharge(): el importe debe ser positivo: %s'
-                % (amount)
+                u"paytpv.executeCharge(): el importe debe ser positivo: %s" % (amount)
             )
         s_amount = str(int(round(amount * 100, 0)))
         if len(order) > 20:
             raise ValueError(
-                u'paytpv.executeCharge(): la longitud máxima de order es 20: %s'
+                u"paytpv.executeCharge(): la longitud máxima de order es 20: %s"
                 % (order)
             )
 
         data = {
-            'DS_IDUSER': idpayuser,
-            'DS_TOKEN_USER': tokenpayuser,
-            'DS_MERCHANT_AMOUNT': s_amount,
-            'DS_MERCHANT_ORDER': order,
-            'DS_MERCHANT_CURRENCY': 'EUR',
-            'DS_MERCHANT_AUTHCODE': authcode,
-            'DS_MERCHANT_MERCHANTDESCRIPTOR': merchant_description,
-            'DS_MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
-            'DS_MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
-            'DS_ORIGINAL_IP': self.ip
-            }
+            "DS_IDUSER": idpayuser,
+            "DS_TOKEN_USER": tokenpayuser,
+            "DS_MERCHANT_AMOUNT": s_amount,
+            "DS_MERCHANT_ORDER": order,
+            "DS_MERCHANT_CURRENCY": "EUR",
+            "DS_MERCHANT_AUTHCODE": authcode,
+            "DS_MERCHANT_MERCHANTDESCRIPTOR": merchant_description,
+            "DS_MERCHANT_MERCHANTCODE": self.MERCHANTCODE,
+            "DS_MERCHANT_TERMINAL": self.MERCHANTTERMINAL,
+            "DS_ORIGINAL_IP": self.ip,
+        }
         signature = [
-            'DS_MERCHANT_MERCHANTCODE', 'DS_IDUSER', 'DS_TOKEN_USER',
-            'DS_MERCHANT_TERMINAL', 'DS_MERCHANT_AUTHCODE', 'DS_MERCHANT_ORDER'
+            "DS_MERCHANT_MERCHANTCODE",
+            "DS_IDUSER",
+            "DS_TOKEN_USER",
+            "DS_MERCHANT_TERMINAL",
+            "DS_MERCHANT_AUTHCODE",
+            "DS_MERCHANT_ORDER",
         ]
-        data['DS_MERCHANT_MERCHANTSIGNATURE'] = self.signature(data, signature)
+        data["DS_MERCHANT_MERCHANTSIGNATURE"] = self.signature(data, signature)
         return data
 
-    def get_secure_iframe(self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko):
+    def get_iframe_url(
+        self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko
+    ):
         """
         * Retorna el codi html del iframe per fer un cobrament securitzat.
         * Operació 109, execute_purchase_token: cobrament a un usuari ja existent.
@@ -206,28 +238,35 @@ class RequestBuilder:
         """
         if amount <= 0:
             raise ValueError(
-                u'paytpv.getSecureIframe(): el importe debe ser positivo: %s' % (amount)
+                u"paytpv.getSecureIframe(): el importe debe ser positivo: %s" % (amount)
             )
         s_amount = str(int(round(amount * 100, 0)))
         if len(order) > 20:
             raise ValueError(
-                u'paytpv.getSecureIframe(): la longitud máxima de order es 20: %s' % (order)
+                u"paytpv.getSecureIframe(): la longitud máxima de order es 20: %s"
+                % (order)
             )
 
         data = {
-            'IDUSER': idpayuser,
-            'TOKEN_USER': tokenpayuser,
-            'OPERATION': "109",
-            'MERCHANT_ORDER': order,
-            'MERCHANT_AMOUNT': s_amount,
-            'MERCHANT_CURRENCY': 'EUR',
-            'MERCHANT_MERCHANTCODE': self.MERCHANTCODE,
-            'MERCHANT_TERMINAL': self.MERCHANTTERMINAL,
-            'ORIGINAL_IP': self.ip
+            "IDUSER": idpayuser,
+            "TOKEN_USER": tokenpayuser,
+            "OPERATION": "109",
+            "MERCHANT_ORDER": order,
+            "MERCHANT_AMOUNT": s_amount,
+            "MERCHANT_CURRENCY": "EUR",
+            "MERCHANT_MERCHANTCODE": self.MERCHANTCODE,
+            "MERCHANT_TERMINAL": self.MERCHANTTERMINAL,
+            "ORIGINAL_IP": self.ip,
         }
         signature = [
-            'MERCHANT_MERCHANTCODE', 'IDUSER', 'TOKEN_USER', 'MERCHANT_TERMINAL',
-            'OPERATION', 'MERCHANT_ORDER', 'MERCHANT_AMOUNT', 'MERCHANT_CURRENCY'
+            "MERCHANT_MERCHANTCODE",
+            "IDUSER",
+            "TOKEN_USER",
+            "MERCHANT_TERMINAL",
+            "OPERATION",
+            "MERCHANT_ORDER",
+            "MERCHANT_AMOUNT",
+            "MERCHANT_CURRENCY",
         ]
         signature = self.iframe_signature(data, signature)
         params = [
@@ -243,25 +282,41 @@ class RequestBuilder:
             "TOKEN_USER=" + tokenpayuser,
             "3DSECURE=1",
             "URLOK=" + urlok,
-            "URLKO=" + urlko
+            "URLKO=" + urlko,
         ]
-        IFRAMEURL = "https://secure.paytpv.com/gateway/bnkgateway.php?%s" % ('&'.join(params))
-        return """<iframe id="secure_iframe"
+        IFRAMEURL = "https://secure.paytpv.com/gateway/bnkgateway.php?%s" % (
+            "&".join(params)
+        )
+
+    def get_secure_iframe(
+        self, idpayuser, tokenpayuser, amount, order, language, urlok, urlko
+    ):
+        url = self.get_iframe_url(
+            idpayuser, tokenpayuser, amount, order, language, urlok, urlko
+        )
+        return (
+            """<iframe id="secure_iframe"
                 title="Secure payment"
                 allowtransparency="true"
                 frameborder="0"
                 style="background: #FFFFFF; width:100%%; height:600px"
-                src="%s"></iframe>""" % (IFRAMEURL)
+                src="%s"></iframe>"""
+            % url
+        )
 
 
 class PaytpvClient:
 
     methods = [
-        "add_user", "info_user", "remove_user", "execute_purchase", "execute_refund"
+        "add_user",
+        "info_user",
+        "remove_user",
+        "execute_purchase",
+        "execute_refund",
     ]
 
     def __init__(self, settings, ip, client=None):
-        self.client = client or Client(settings['PAYTPVWSDL'])
+        self.client = client or Client(settings["PAYTPVWSDL"])
         self.builder = RequestBuilder(settings, ip)
 
     def __getattr__(self, name):
@@ -283,12 +338,12 @@ class PaytpvClient:
 
 
 class PaytpvAsyncClient(PaytpvClient):
-
     def __init__(self, settings, ip=None, client=None):
         from zeep.asyncio import AsyncTransport
+
         self.client = client or Client(
-            settings['PAYTPVWSDL'],
-            transport=AsyncTransport(loop=asyncio.get_event_loop())
+            settings["PAYTPVWSDL"],
+            transport=AsyncTransport(loop=asyncio.get_event_loop()),
         )
         self.builder = RequestBuilder(settings, ip)
 
