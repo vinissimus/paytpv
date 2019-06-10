@@ -313,8 +313,6 @@ class PaytpvClient:
         "remove_user",
         "execute_purchase",
         "execute_refund",
-        "get_secure_iframe",
-        "get_iframe_url"
     ]
 
     def __init__(self, settings, ip, client=None):
