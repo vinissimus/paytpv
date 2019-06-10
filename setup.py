@@ -3,7 +3,7 @@
 from distutils.core import setup
 
 setup(name='paytpv',
-      version='1.1.1',
+      version='1.1.2',
       description='Client api SOAP de PayTPV',
       author='Jordi Collell',
       author_email='jordic@vinissimus.com',
